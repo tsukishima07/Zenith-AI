@@ -1,0 +1,739 @@
+/* =========================================
+   ZENITH - MAIN APPLICATION STYLES
+   ========================================= */
+
+.zenith {
+  min-height: 100vh;
+  padding: 28px 6%;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: #f5f3ff;
+
+  background:
+    radial-gradient(
+      circle at 50% 15%,
+      rgba(110, 76, 255, 0.16),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 15% 80%,
+      rgba(47, 110, 255, 0.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 90% 70%,
+      rgba(163, 82, 255, 0.06),
+      transparent 25%
+    ),
+    #070711;
+}
+
+/* =========================================
+   BACKGROUND GRID
+   ========================================= */
+
+.zenith::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+
+  background-image:
+    linear-gradient(
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    );
+
+  background-size: 70px 70px;
+
+  mask-image: linear-gradient(
+    to bottom,
+    black,
+    transparent 90%
+  );
+}
+
+/* =========================================
+   TOP BAR
+   ========================================= */
+
+.topbar {
+  position: relative;
+  z-index: 10;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Brand */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  letter-spacing: 0.24em;
+}
+
+.brand-symbol {
+  color: #9b7cff;
+  font-size: 20px;
+
+  text-shadow:
+    0 0 15px rgba(155, 124, 255, 0.8);
+}
+
+/* Online status */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 13px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.035);
+
+  color: #9d9aaa;
+
+  font-size: 10px;
+  letter-spacing: 0.12em;
+
+  backdrop-filter: blur(15px);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #63e6a7;
+
+  box-shadow:
+    0 0 8px rgba(99, 230, 167, 0.8),
+    0 0 18px rgba(99, 230, 167, 0.4);
+
+  animation: statusPulse 2s infinite;
+}
+
+/* =========================================
+   HERO
+   ========================================= */
+
+.hero {
+  position: relative;
+  z-index: 2;
+
+  text-align: center;
+
+  max-width: 800px;
+
+  margin: 65px auto 0;
+}
+
+/* =========================================
+   ZENITH CORE
+   ========================================= */
+
+.zenith-core {
+  position: relative;
+
+  width: 120px;
+  height: 120px;
+
+  margin: 0 auto 34px;
+
+  display: grid;
+  place-items: center;
+}
+
+/* Outer rings */
+
+.core-ring {
+  position: absolute;
+
+  inset: 0;
+
+  border: 1px solid rgba(145, 112, 255, 0.4);
+
+  border-radius: 50%;
+
+  box-shadow:
+    0 0 25px rgba(120, 90, 255, 0.08);
+}
+
+.ring-one {
+  animation: rotate 12s linear infinite;
+}
+
+.ring-two {
+  inset: 12px;
+
+  border-color: rgba(91, 157, 255, 0.3);
+
+  animation: rotateReverse 8s linear infinite;
+}
+
+/* Center */
+
+.core-center {
+  width: 58px;
+  height: 58px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  font-size: 25px;
+  color: white;
+
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      #c1adff,
+      #8062ed 40%,
+      #4b2bc2 100%
+    );
+
+  box-shadow:
+    0 0 35px rgba(124, 91, 255, 0.5),
+    0 0 90px rgba(91, 65, 220, 0.2);
+
+  animation: corePulse 3s ease-in-out infinite;
+}
+
+/* =========================================
+   HERO TEXT
+   ========================================= */
+
+.eyebrow {
+  margin-bottom: 14px;
+
+  color: #9277ff;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.28em;
+}
+
+.hero h1 {
+  margin: 0;
+
+  font-size: clamp(36px, 5vw, 62px);
+
+  line-height: 1.05;
+
+  letter-spacing: -0.04em;
+
+  background:
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #dcd4ff 45%,
+      #9e86ff 100%
+    );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-description {
+  max-width: 560px;
+
+  margin: 22px auto 0;
+
+  color: #858393;
+
+  font-size: 15px;
+
+  line-height: 1.7;
+}
+
+/* =========================================
+   QUICK ACTIONS
+   ========================================= */
+
+.quick-actions {
+  position: relative;
+  z-index: 3;
+
+  display: grid;
+
+  grid-template-columns: repeat(4, 1fr);
+
+  gap: 12px;
+
+  max-width: 900px;
+
+  margin: 50px auto 32px;
+}
+
+/* Action card */
+
+.action-card {
+  min-height: 125px;
+
+  padding: 20px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 8px;
+
+  text-align: left;
+
+  color: #f5f3ff;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.055),
+      rgba(255, 255, 255, 0.018)
+    );
+
+  backdrop-filter: blur(20px);
+
+  cursor: pointer;
+
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.action-card > span {
+  color: #9b7cff;
+
+  font-size: 21px;
+
+  text-shadow:
+    0 0 15px rgba(155, 124, 255, 0.6);
+}
+
+.action-card strong {
+  font-size: 14px;
+}
+
+.action-card small {
+  color: #777586;
+
+  font-size: 11px;
+
+  line-height: 1.4;
+}
+
+.action-card:hover {
+  transform: translateY(-5px);
+
+  border-color: rgba(147, 113, 255, 0.35);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(147, 113, 255, 0.09),
+      rgba(255, 255, 255, 0.025)
+    );
+
+  box-shadow:
+    0 15px 50px rgba(0, 0, 0, 0.25),
+    0 0 30px rgba(124, 91, 255, 0.06);
+}
+
+.action-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+/* =========================================
+   RESPONSE CARD
+   ========================================= */
+
+.response-card {
+  max-width: 680px;
+
+  margin: 35px auto 0;
+
+  padding: 22px 24px;
+
+  text-align: left;
+
+  border: 1px solid rgba(155, 124, 255, 0.18);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(155, 124, 255, 0.08),
+      rgba(255, 255, 255, 0.025)
+    );
+
+  backdrop-filter: blur(20px);
+
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.2),
+    0 0 40px rgba(124, 91, 255, 0.04);
+
+  animation: responseAppear 0.35s ease;
+}
+
+.response-label {
+  margin-bottom: 11px;
+
+  color: #9b7cff;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 0.2em;
+}
+
+.response-card p {
+  margin: 0;
+
+  color: #d6d3e2;
+
+  font-size: 14px;
+
+  line-height: 1.75;
+
+  white-space: pre-wrap;
+}
+
+/* =========================================
+   PROMPT AREA
+   ========================================= */
+
+.prompt-area {
+  position: relative;
+  z-index: 5;
+
+  max-width: 760px;
+
+  margin: 0 auto 20px;
+}
+
+/* Prompt container */
+
+.prompt-box {
+  display: flex;
+
+  align-items: center;
+
+  padding: 7px 8px 7px 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.055),
+      rgba(255, 255, 255, 0.025)
+    );
+
+  backdrop-filter: blur(25px);
+
+  box-shadow:
+    0 20px 80px rgba(0, 0, 0, 0.25),
+    0 0 40px rgba(120, 90, 255, 0.04);
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.prompt-box:focus-within {
+  border-color: rgba(155, 124, 255, 0.35);
+
+  box-shadow:
+    0 20px 80px rgba(0, 0, 0, 0.3),
+    0 0 35px rgba(124, 91, 255, 0.1);
+}
+
+/* Input */
+
+.prompt-box input {
+  flex: 1;
+
+  min-width: 0;
+
+  border: none;
+  outline: none;
+
+  color: white;
+
+  background: transparent;
+
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.prompt-box input::placeholder {
+  color: #686674;
+}
+
+.prompt-box input:disabled {
+  cursor: wait;
+}
+
+/* Send button */
+
+.send-button {
+  flex-shrink: 0;
+
+  width: 42px;
+  height: 42px;
+
+  border: none;
+
+  border-radius: 14px;
+
+  color: white;
+
+  background:
+    linear-gradient(
+      135deg,
+      #9b7cff,
+      #5e3dcc
+    );
+
+  cursor: pointer;
+
+  font-size: 18px;
+
+  box-shadow:
+    0 5px 20px rgba(100, 70, 220, 0.2);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: scale(1.05);
+
+  box-shadow:
+    0 0 25px rgba(132, 94, 255, 0.45);
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  box-shadow: none;
+}
+
+/* Hint */
+
+.prompt-hint {
+  margin-top: 13px;
+
+  text-align: center;
+
+  color: #50505d;
+
+  font-size: 10px;
+
+  letter-spacing: 0.01em;
+}
+
+/* =========================================
+   ANIMATIONS
+   ========================================= */
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotateReverse {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes corePulse {
+  0%,
+  100% {
+    transform: scale(1);
+
+    box-shadow:
+      0 0 35px rgba(124, 91, 255, 0.5),
+      0 0 90px rgba(91, 65, 220, 0.2);
+  }
+
+  50% {
+    transform: scale(1.06);
+
+    box-shadow:
+      0 0 45px rgba(124, 91, 255, 0.65),
+      0 0 110px rgba(91, 65, 220, 0.28);
+  }
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes responseAppear {
+  from {
+    opacity: 0;
+
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+   ========================================= */
+
+@media (max-width: 900px) {
+  .quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+
+    max-width: 600px;
+  }
+
+  .hero {
+    max-width: 700px;
+  }
+}
+
+@media (max-width: 600px) {
+  .zenith {
+    padding: 20px;
+  }
+
+  .topbar {
+    padding: 0 2px;
+  }
+
+  .status {
+    display: none;
+  }
+
+  .hero {
+    margin-top: 45px;
+  }
+
+  .zenith-core {
+    width: 100px;
+    height: 100px;
+  }
+
+  .core-center {
+    width: 50px;
+    height: 50px;
+
+    font-size: 21px;
+  }
+
+  .hero h1 {
+    font-size: 38px;
+  }
+
+  .hero-description {
+    font-size: 14px;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
+
+    margin-top: 35px;
+  }
+
+  .action-card {
+    min-height: 100px;
+  }
+
+  .prompt-box {
+    padding-left: 15px;
+
+    border-radius: 17px;
+  }
+
+  .prompt-box input {
+    font-size: 13px;
+  }
+
+  .send-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .response-card {
+    margin-top: 28px;
+
+    padding: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero h1 {
+    font-size: 32px;
+  }
+
+  .eyebrow {
+    font-size: 8px;
+  }
+
+  .prompt-hint {
+    font-size: 9px;
+  }
+}
