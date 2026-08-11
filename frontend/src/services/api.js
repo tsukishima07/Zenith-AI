@@ -7,9 +7,37 @@ const api = axios.create({
   },
 });
 
-export const sendMessage = async (message) => {
+export const createConversation = async () => {
+  const response = await api.post("/conversations");
+
+  return response.data;
+};
+
+export const getConversations = async () => {
+  const response = await api.get("/conversations");
+
+  return response.data;
+};
+
+export const getConversationMessages = async (
+  conversationId
+) => {
+  const response = await api.get(
+    `/conversations/${conversationId}/messages`
+  );
+
+  return response.data;
+};
+
+export const sendMessage = async (
+  conversationId,
+  message,
+  history = []
+) => {
   const response = await api.post("/chat", {
+    conversation_id: conversationId,
     message: message,
+    history: history,
   });
 
   return response.data;

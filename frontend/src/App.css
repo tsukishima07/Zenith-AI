@@ -737,3 +737,629 @@
     font-size: 9px;
   }
 }
+/* =========================================
+   CONVERSATION
+   ========================================= */
+
+.conversation {
+  position: relative;
+  z-index: 3;
+
+  width: min(900px, 100%);
+
+  margin: 50px auto 150px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 22px;
+
+  animation: responseAppear 0.35s ease;
+}
+
+.message {
+  max-width: 78%;
+
+  padding: 18px 20px;
+
+  border-radius: 18px;
+
+  backdrop-filter: blur(20px);
+
+  animation: responseAppear 0.3s ease;
+}
+
+.user-message {
+  align-self: flex-end;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(155, 124, 255, 0.14),
+      rgba(155, 124, 255, 0.05)
+    );
+
+  border: 1px solid rgba(155, 124, 255, 0.18);
+}
+
+.assistant-message {
+  align-self: flex-start;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.055),
+      rgba(255, 255, 255, 0.02)
+    );
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.message-label {
+  margin-bottom: 9px;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.18em;
+
+  color: #9b7cff;
+}
+
+.message-content {
+  color: #d6d3e2;
+
+  font-size: 14px;
+
+  line-height: 1.75;
+
+  white-space: pre-wrap;
+}
+
+/* =========================================
+   THINKING INDICATOR
+   ========================================= */
+
+.thinking {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  height: 20px;
+}
+
+.thinking span {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #9b7cff;
+
+  animation: thinking 1.2s infinite ease-in-out;
+}
+
+.thinking span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes thinking {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+
+    opacity: 0.35;
+  }
+
+  30% {
+    transform: translateY(-4px);
+
+    opacity: 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .conversation {
+    margin-top: 35px;
+
+    margin-bottom: 130px;
+  }
+
+  .message {
+    max-width: 90%;
+  }
+}
+/* =========================================
+   ZENITH LAYOUT
+   ========================================= */
+
+.zenith-layout {
+  position: relative;
+  z-index: 2;
+
+  display: flex;
+
+  width: min(1400px, 100%);
+
+  min-height: calc(100vh - 90px);
+
+  margin: 25px auto 0;
+}
+
+
+/* =========================================
+   SIDEBAR
+   ========================================= */
+
+.sidebar {
+  width: 240px;
+
+  flex-shrink: 0;
+
+  padding: 10px 18px 30px 0;
+
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+
+/* New chat */
+
+.new-chat-button {
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 12px 15px;
+
+  border: 1px solid rgba(155, 124, 255, 0.18);
+
+  border-radius: 12px;
+
+  color: #e7e2ff;
+
+  background: rgba(155, 124, 255, 0.07);
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.new-chat-button span {
+  font-size: 17px;
+
+  color: #9b7cff;
+}
+
+.new-chat-button:hover {
+  background: rgba(155, 124, 255, 0.12);
+
+  border-color: rgba(155, 124, 255, 0.3);
+
+  transform: translateY(-1px);
+}
+
+
+/* Sidebar title */
+
+.sidebar-section {
+  margin-top: 28px;
+}
+
+.sidebar-title {
+  margin: 0 0 10px 8px;
+
+  color: #555362;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.2em;
+}
+
+
+/* Conversation list */
+
+.conversation-list {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+
+/* Conversation item */
+
+.conversation-item {
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  padding: 10px 9px;
+
+  border: 1px solid transparent;
+
+  border-radius: 10px;
+
+  color: #777586;
+
+  background: transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.conversation-icon {
+  flex-shrink: 0;
+
+  color: #635e73;
+
+  font-size: 11px;
+}
+
+.conversation-title {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+
+  font-size: 11px;
+}
+
+.conversation-item:hover {
+  color: #bdb7d0;
+
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.conversation-item.active {
+  color: #ddd7f5;
+
+  background: rgba(155, 124, 255, 0.08);
+
+  border-color: rgba(155, 124, 255, 0.1);
+}
+
+.conversation-item.active .conversation-icon {
+  color: #9b7cff;
+}
+
+
+/* =========================================
+   CHAT AREA
+   ========================================= */
+
+.chat-area {
+  position: relative;
+
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 0 30px;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+/* =========================================
+   INITIALIZING
+   ========================================= */
+
+.initializing {
+  min-height: 80vh;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+
+  align-items: center;
+
+  gap: 20px;
+}
+
+.initializing p {
+  margin: 0;
+
+  color: #716d80;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.25em;
+}
+
+
+/* =========================================
+   RESPONSIVE SIDEBAR
+   ========================================= */
+
+@media (max-width: 800px) {
+
+  .sidebar {
+    width: 190px;
+  }
+
+  .chat-area {
+    padding: 0 20px;
+  }
+
+}
+
+
+@media (max-width: 650px) {
+
+  .zenith-layout {
+    display: block;
+  }
+
+  .sidebar {
+    width: 100%;
+
+    padding: 0 0 15px;
+
+    border-right: none;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .sidebar-section {
+    display: none;
+  }
+
+  .new-chat-button {
+    width: auto;
+  }
+
+  .chat-area {
+    padding: 0;
+  }
+
+}
+/* =========================================
+   MARKDOWN
+   ========================================= */
+
+.message-content {
+  line-height: 1.7;
+}
+
+
+/* Paragraphs */
+
+.message-content p {
+  margin: 0 0 14px;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+
+/* Headings */
+
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+  margin-top: 22px;
+  margin-bottom: 10px;
+
+  color: #eeeafc;
+
+  line-height: 1.3;
+}
+
+.message-content h1 {
+  font-size: 24px;
+}
+
+.message-content h2 {
+  font-size: 20px;
+}
+
+.message-content h3 {
+  font-size: 17px;
+}
+
+
+/* Lists */
+
+.message-content ul,
+.message-content ol {
+  margin: 10px 0 15px;
+
+  padding-left: 24px;
+}
+
+.message-content li {
+  margin: 5px 0;
+}
+
+
+/* Links */
+
+.message-content a {
+  color: #9b7cff;
+
+  text-decoration: none;
+}
+
+.message-content a:hover {
+  text-decoration: underline;
+}
+
+
+/* Bold */
+
+.message-content strong {
+  color: #f0ecff;
+
+  font-weight: 650;
+}
+
+
+/* Blockquotes */
+
+.message-content blockquote {
+  margin: 15px 0;
+
+  padding: 10px 16px;
+
+  border-left: 3px solid #9b7cff;
+
+  background: rgba(155, 124, 255, 0.05);
+
+  color: #aaa5b8;
+}
+
+
+/* =========================================
+   INLINE CODE
+   ========================================= */
+
+.inline-code {
+  padding: 3px 6px;
+
+  border-radius: 5px;
+
+  background: rgba(255, 255, 255, 0.07);
+
+  color: #c9baff;
+
+  font-family:
+    "Cascadia Code",
+    "Consolas",
+    monospace;
+
+  font-size: 0.9em;
+}
+
+
+/* =========================================
+   CODE BLOCK
+   ========================================= */
+
+.code-block {
+  overflow: hidden;
+
+  margin: 16px 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 10px;
+
+  background: #111116;
+}
+
+
+/* Code header */
+
+.code-header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  padding: 8px 12px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  background: rgba(255, 255, 255, 0.025);
+
+  color: #777384;
+
+  font-family:
+    "Cascadia Code",
+    "Consolas",
+    monospace;
+
+  font-size: 10px;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.08em;
+}
+
+
+/* Copy button */
+
+.code-header button {
+  padding: 4px 9px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 5px;
+
+  background: transparent;
+
+  color: #8d8998;
+
+  font-size: 10px;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.code-header button:hover {
+  background: rgba(155, 124, 255, 0.1);
+
+  color: #c5b8ff;
+}
+
+
+/* Syntax highlighter */
+
+.code-block pre {
+  margin: 0 !important;
+
+  padding: 16px !important;
+
+  overflow-x: auto;
+
+  font-family:
+    "Cascadia Code",
+    "Consolas",
+    monospace !important;
+
+  font-size: 12px !important;
+
+  line-height: 1.6 !important;
+}

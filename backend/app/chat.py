@@ -1,15 +1,21 @@
 import ollama
 
 
-def generate_response(message: str) -> str:
+def generate_response(
+    message: str,
+    history: list[dict]
+) -> str:
+
+    messages = history + [
+        {
+            "role": "user",
+            "content": message
+        }
+    ]
+
     response = ollama.chat(
         model="qwen2.5:7b",
-        messages=[
-            {
-                "role": "user",
-                "content": message
-            }
-        ]
+        messages=messages
     )
 
     return response["message"]["content"]
