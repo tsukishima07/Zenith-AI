@@ -139,7 +139,32 @@ export const uploadFile = async (
 
   return response.data;
 };
+// =========================================
+// DOCUMENT LIBRARY
+// =========================================
 
+export const getConversationDocuments = async (
+  conversationId
+) => {
+  const response = await api.get(
+    `/conversations/${conversationId}/documents`
+  );
+
+  return response.data;
+};
+// =========================================
+// DELETE DOCUMENT
+// =========================================
+
+export const deleteDocument = async (
+  documentId
+) => {
+  const response = await api.delete(
+    `/documents/${documentId}`
+  );
+
+  return response.data;
+};
 // =========================================
 // GOOGLE LOGIN
 // =========================================
@@ -178,14 +203,13 @@ export const renameConversation = async (
   conversationId,
   title
 ) => {
+  const formData = new FormData();
+
+  formData.append("title", title);
+
   const response = await api.put(
     `/conversations/${conversationId}`,
-    null,
-    {
-      params: {
-        title,
-      },
-    }
+    formData
   );
 
   return response.data;

@@ -1,7 +1,10 @@
 from datetime import datetime
 from pathlib import Path
 import os
+import re
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from fastapi import (
     Depends,
     FastAPI,
@@ -200,27 +203,125 @@ def get_conversation_for_user(
 
 
 def should_search_web(message: str) -> bool:
-    keywords = [
-        "latest",
-        "current",
-        "today",
-        "now",
-        "news",
-        "recent",
-        "search",
-        "online",
-        "internet",
-        "what happened",
-        "price",
-        "weather",
+    """
+    Decide whether a question needs live web information.
+    """
+
+    message_lower = message.lower().strip()
+
+    # -----------------------------------------------------
+    # Explicit web requests
+    # -----------------------------------------------------
+
+    explicit_triggers = [
+        "search the web",
+        "search online",
+        "search internet",
+        "look it up",
+        "look this up",
+        "google this",
+        "find online",
+        "find on the internet",
+        "browse the web",
+        "web search",
+        "internet search",
     ]
 
-    message_lower = message.lower()
+    if any(
+        trigger in message_lower
+        for trigger in explicit_triggers
+    ):
+        return True
 
-    return any(
-        keyword in message_lower
-        for keyword in keywords
-    )
+
+    # -----------------------------------------------------
+    # Current / time-sensitive information
+    # -----------------------------------------------------
+
+    current_triggers = [
+        "latest",
+        "current",
+        "currently",
+        "today",
+        "tonight",
+        "this week",
+        "this month",
+        "this year",
+        "right now",
+        "as of now",
+        "recent",
+        "recently",
+        "newest",
+        "updated",
+        "up to date",
+        "breaking",
+        "news",
+    ]
+
+    if any(
+        trigger in message_lower
+        for trigger in current_triggers
+    ):
+        return True
+
+
+    # -----------------------------------------------------
+    # Live information
+    # -----------------------------------------------------
+
+    live_triggers = [
+        "weather",
+        "temperature",
+        "forecast",
+        "stock price",
+        "share price",
+        "crypto price",
+        "bitcoin price",
+        "exchange rate",
+        "usd to inr",
+        "inr to usd",
+        "score",
+        "live score",
+        "match score",
+        "standings",
+        "ranking",
+        "rankings",
+    ]
+
+    if any(
+        trigger in message_lower
+        for trigger in live_triggers
+    ):
+        return True
+
+
+    # -----------------------------------------------------
+    # Current events / developments
+    # -----------------------------------------------------
+
+    event_triggers = [
+        "what happened",
+        "what's happening",
+        "what is happening",
+        "what happened today",
+        "latest update",
+        "latest updates",
+        "latest news",
+        "new update",
+        "new updates",
+        "recent developments",
+        "recent update",
+        "recent updates",
+    ]
+
+    if any(
+        trigger in message_lower
+        for trigger in event_triggers
+    ):
+        return True
+
+
+    return False
 
 
 # =========================================================
@@ -683,7 +784,70 @@ def get_documents(
         }
         for document in documents
     ]
+# =========================================================
+# DELETE DOCUMENT
+# =========================================================
 
+@app.delete("/documents/{document_id}")
+def delete_document(
+    document_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+
+    user = get_current_user(
+        request,
+        db,
+    )
+
+    document = (
+        db.query(Document)
+        .join(
+            Conversation,
+            Document.conversation_id ==
+            Conversation.id,
+        )
+        .filter(
+            Document.id == document_id,
+            Conversation.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not document:
+
+        return {
+            "error": "Document not found"
+        }
+
+
+    file_path = (
+        UPLOAD_DIR /
+        document.filename
+    )
+
+    try:
+
+        if file_path.exists():
+            file_path.unlink()
+
+    except Exception as error:
+
+        print(
+            f"Failed to remove physical file: {error}"
+        )
+
+
+    db.delete(document)
+
+    db.commit()
+
+
+    return {
+        "success": True,
+        "message":
+            "Document deleted successfully.",
+    }
 
 # =========================================================
 # DOCUMENT - OPEN
@@ -867,6 +1031,286 @@ async def upload_file(
 
 
 # =========================================================
+# LOCAL DOCUMENT RAG
+# =========================================================
+
+def chunk_document(
+    text,
+    chunk_size=1200,
+    overlap=200,
+):
+    """
+    Split document text into overlapping chunks.
+    """
+
+    if not text:
+        return []
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
+
+    if not text:
+        return []
+
+    chunks = []
+
+    start = 0
+
+    while start < len(text):
+
+        end = min(
+            start + chunk_size,
+            len(text),
+        )
+
+        chunk = text[start:end].strip()
+
+        if chunk:
+            chunks.append(chunk)
+
+        if end >= len(text):
+            break
+
+        start = end - overlap
+
+    return chunks
+
+
+def retrieve_document_context(
+    db,
+    conversation_id,
+    query,
+    max_chunks=10,
+):
+    """
+    Retrieve relevant document chunks for a conversation.
+    Supports both normal questions and generic requests
+    such as "read this document".
+    """
+
+    # -----------------------------------------------------
+    # Get documents belonging to this conversation
+    # -----------------------------------------------------
+
+    documents = (
+        db.query(Document)
+        .filter(
+            Document.conversation_id == conversation_id,
+            Document.characters > 0,
+        )
+        .all()
+    )
+
+    if not documents:
+        return "", []
+
+
+    # -----------------------------------------------------
+    # Create chunks
+    # -----------------------------------------------------
+
+    all_chunks = []
+
+    for document in documents:
+
+        chunks = chunk_document(
+            document.text
+        )
+
+        for index, chunk in enumerate(chunks):
+
+            all_chunks.append(
+                {
+                    "document_id": document.id,
+                    "filename": document.filename,
+                    "chunk_index": index,
+                    "text": chunk,
+                }
+            )
+
+
+    if not all_chunks:
+        return "", []
+
+
+    # -----------------------------------------------------
+    # Detect generic document requests
+    # -----------------------------------------------------
+
+    query_lower = query.lower()
+
+    generic_document_request = any(
+        phrase in query_lower
+        for phrase in [
+            "read this document",
+            "read the document",
+            "read this file",
+            "read the file",
+            "summarize this document",
+            "summarize the document",
+            "summarise this document",
+            "summarise the document",
+            "explain this document",
+            "explain the document",
+            "explain this file",
+            "what is this document about",
+            "what is the document about",
+            "give me the key points",
+            "key points from this document",
+            "explain bullet points",
+        ]
+    )
+
+
+    # -----------------------------------------------------
+    # Generic request
+    # -----------------------------------------------------
+
+    if generic_document_request:
+
+        selected = [
+            {
+                **item,
+                "score": 1.0,
+            }
+            for item in all_chunks[:max_chunks]
+        ]
+
+
+    # -----------------------------------------------------
+    # Normal question → TF-IDF retrieval
+    # -----------------------------------------------------
+
+    else:
+
+        texts = [
+            item["text"]
+            for item in all_chunks
+        ]
+
+        try:
+
+            vectorizer = TfidfVectorizer(
+                stop_words="english",
+                ngram_range=(1, 2),
+                max_features=12000,
+            )
+
+            matrix = vectorizer.fit_transform(
+                texts + [query]
+            )
+
+            document_vectors = matrix[:-1]
+
+            query_vector = matrix[-1]
+
+            scores = cosine_similarity(
+                query_vector,
+                document_vectors,
+            )[0]
+
+        except Exception as error:
+
+            print(
+                f"RAG vectorization failed: {error}"
+            )
+
+            return "", []
+
+
+        ranked = sorted(
+            zip(all_chunks, scores),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+
+
+        selected = []
+
+        for item, score in ranked:
+
+            if score <= 0:
+                continue
+
+            selected.append(
+                {
+                    **item,
+                    "score": float(score),
+                }
+            )
+
+            if len(selected) >= max_chunks:
+                break
+
+
+        # -------------------------------------------------
+        # Fallback if query has no keyword overlap
+        # -------------------------------------------------
+
+        if not selected:
+
+            selected = [
+                {
+                    **item,
+                    "score": 0.0,
+                }
+                for item in all_chunks[:max_chunks]
+            ]
+
+
+    # -----------------------------------------------------
+    # Build context
+    # -----------------------------------------------------
+
+    if not selected:
+        return "", []
+
+
+    context_parts = []
+
+    sources = []
+
+
+    for item in selected:
+
+        context_parts.append(
+            f"""
+DOCUMENT: {item["filename"]}
+
+{item["text"]}
+""".strip()
+        )
+
+        sources.append(
+            {
+                "document_id":
+                    item["document_id"],
+
+                "filename":
+                    item["filename"],
+
+                "chunk":
+                    item["chunk_index"],
+
+                "score":
+                    round(
+                        item["score"],
+                        4,
+                    ),
+            }
+        )
+
+
+    context = "\n\n".join(
+        context_parts
+    )
+
+
+    return context, sources
+# =========================================================
 # CHAT
 # =========================================================
 
@@ -897,11 +1341,14 @@ def chat(
     # -----------------------------------------------------
 
     if conversation.title == "New Conversation":
+
         try:
             conversation.title = generate_title(
                 request_data.message
             )
+
         except Exception:
+
             conversation.title = (
                 request_data.message[:50]
             )
@@ -933,50 +1380,92 @@ def chat(
     ]
 
     # -----------------------------------------------------
-    # Document context
+    # Document RAG
     # -----------------------------------------------------
 
-    document_context = (
-        request_data.document_text.strip()
-    )
+    document_context = ""
+
+    document_sources = []
+
+    try:
+
+        (
+            document_context,
+            document_sources,
+        ) = retrieve_document_context(
+            db,
+            request_data.conversation_id,
+            request_data.message,
+        )
+
+    except Exception as error:
+
+        print(
+            f"Document RAG failed: {error}"
+        )
+
+    # -----------------------------------------------------
+    # Enhanced message
+    # -----------------------------------------------------
 
     enhanced_message = request_data.message
 
     if document_context:
+
         enhanced_message = f"""
-You have access to the following uploaded document.
+You are Zenith, a local AI assistant.
 
-DOCUMENT:
---------------------
+You have access to relevant information from
+the user's uploaded documents.
+
+DOCUMENT CONTEXT:
+================================================
+
 {document_context}
---------------------
 
-Use the document above to answer the user's question.
-
-If the answer is not contained in the document,
-say so clearly.
+================================================
 
 USER QUESTION:
+================================================
+
 {request_data.message}
+
+================================================
+
+INSTRUCTIONS:
+
+Use the documents as supporting evidence.
+
+Do not invent information.
+
+If the documents do not contain the answer,
+clearly say that.
+
+If multiple documents contain relevant
+information, combine them intelligently.
 """
 
     # -----------------------------------------------------
     # Web search
     # -----------------------------------------------------
 
-    web_context = ""
     results = []
+
+    web_context = ""
 
     if should_search_web(
         request_data.message
     ):
+
         try:
+
             results = search_web(
                 request_data.message,
                 max_results=5,
             )
 
             if results:
+
                 web_context = "\n\n".join(
                     [
                         (
@@ -989,25 +1478,64 @@ USER QUESTION:
                 )
 
         except Exception as error:
+
             print(
                 f"Web search failed: {error}"
             )
 
+    # -----------------------------------------------------
+    # Combine document + web context
+    # -----------------------------------------------------
+
     if web_context:
+
         enhanced_message = f"""
-Use the following web search results to answer
-the user's question.
+You are Zenith, a local AI assistant.
+
+DOCUMENT CONTEXT:
+================================================
+
+{
+    document_context
+    if document_context
+    else
+    "No relevant document context was found."
+}
+
+================================================
 
 WEB SEARCH RESULTS:
---------------------
-{web_context}
---------------------
+================================================
 
-Use the search results as current information.
-When appropriate, mention the relevant source.
+{web_context}
+
+================================================
 
 USER QUESTION:
+================================================
+
 {request_data.message}
+
+================================================
+
+INSTRUCTIONS:
+
+Use uploaded documents when they contain
+relevant information.
+
+Use web results for current information.
+
+For current information, prefer web results.
+
+For information contained in uploaded documents,
+prefer the documents.
+
+Combine sources when appropriate.
+
+Do not invent facts.
+
+If the documents and web results disagree,
+clearly explain the difference.
 """
 
     # -----------------------------------------------------
@@ -1039,9 +1567,13 @@ USER QUESTION:
     return {
         "conversation_id":
             request_data.conversation_id,
-        "response": response,
+
+        "response":
+            response,
+
         "web_search":
             bool(web_context),
+
         "sources": [
             {
                 "title": result["title"],
@@ -1051,6 +1583,9 @@ USER QUESTION:
         ]
         if web_context
         else [],
+
+        "document_sources":
+            document_sources,
     }
 
 
@@ -1085,11 +1620,14 @@ def chat_stream(
     # -----------------------------------------------------
 
     if conversation.title == "New Conversation":
+
         try:
             conversation.title = generate_title(
                 request_data.message
             )
+
         except Exception:
+
             conversation.title = (
                 request_data.message[:50]
             )
@@ -1121,31 +1659,69 @@ def chat_stream(
     ]
 
     # -----------------------------------------------------
-    # Document context
+    # Document RAG
     # -----------------------------------------------------
 
-    document_context = (
-        request_data.document_text.strip()
-    )
+    document_context = ""
+
+    document_sources = []
+
+    try:
+
+        (
+            document_context,
+            document_sources,
+        ) = retrieve_document_context(
+            db,
+            request_data.conversation_id,
+            request_data.message,
+        )
+
+    except Exception as error:
+
+        print(
+            f"Document RAG failed: {error}"
+        )
+
+    # -----------------------------------------------------
+    # Enhanced message
+    # -----------------------------------------------------
 
     enhanced_message = request_data.message
 
     if document_context:
+
         enhanced_message = f"""
-You have access to the following uploaded document.
+You are Zenith, a local AI assistant.
 
-DOCUMENT:
---------------------
+You have access to relevant information from
+the user's uploaded documents.
+
+DOCUMENT CONTEXT:
+================================================
+
 {document_context}
---------------------
 
-Use the document above to answer the user's question.
-
-If the answer is not contained in the document,
-say so clearly.
+================================================
 
 USER QUESTION:
+================================================
+
 {request_data.message}
+
+================================================
+
+INSTRUCTIONS:
+
+Use the documents as supporting evidence.
+
+Do not invent information.
+
+If the documents do not contain the answer,
+say so clearly.
+
+If multiple documents contain relevant
+information, combine them intelligently.
 """
 
     # -----------------------------------------------------
@@ -1154,16 +1730,21 @@ USER QUESTION:
 
     results = []
 
+    web_context = ""
+
     if should_search_web(
         request_data.message
     ):
+
         try:
+
             results = search_web(
                 request_data.message,
                 max_results=5,
             )
 
             if results:
+
                 web_context = "\n\n".join(
                     [
                         (
@@ -1175,39 +1756,84 @@ USER QUESTION:
                     ]
                 )
 
-                enhanced_message = f"""
-Use the following web search results to answer
-the user's question.
-
-WEB SEARCH RESULTS:
---------------------
-{web_context}
---------------------
-
-Use the search results as current information.
-
-USER QUESTION:
-{request_data.message}
-"""
-
         except Exception as error:
+
             print(
                 f"Web search failed: {error}"
             )
+
+    # -----------------------------------------------------
+    # Combine document + web context
+    # -----------------------------------------------------
+
+    if web_context:
+
+        enhanced_message = f"""
+You are Zenith, a local AI assistant.
+
+DOCUMENT CONTEXT:
+================================================
+
+{
+    document_context
+    if document_context
+    else
+    "No relevant document context was found."
+}
+
+================================================
+
+WEB SEARCH RESULTS:
+================================================
+
+{web_context}
+
+================================================
+
+USER QUESTION:
+================================================
+
+{request_data.message}
+
+================================================
+
+INSTRUCTIONS:
+
+Use uploaded documents when they contain
+relevant information.
+
+Use web results for current information.
+
+For current information, prefer web results.
+
+For information contained in uploaded documents,
+prefer the documents.
+
+Combine sources when appropriate.
+
+Do not invent facts.
+
+If the documents and web results disagree,
+clearly explain the difference.
+"""
 
     # -----------------------------------------------------
     # Generator
     # -----------------------------------------------------
 
     def generate_and_save():
+
         full_response = ""
 
         try:
+
             for chunk in generate_response_stream(
                 enhanced_message,
                 history,
             ):
+
                 full_response += chunk
+
                 yield chunk
 
             assistant_message = Message(
@@ -1226,6 +1852,7 @@ USER QUESTION:
             db.commit()
 
         except Exception as error:
+
             db.rollback()
 
             print(
@@ -1233,6 +1860,10 @@ USER QUESTION:
             )
 
             raise
+
+    # -----------------------------------------------------
+    # Return streaming response
+    # -----------------------------------------------------
 
     return StreamingResponse(
         generate_and_save(),

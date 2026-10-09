@@ -1,0 +1,10 @@
+Zenith is a locally powered AI assistant.
+
+It uses FastAPI as its backend,
+React as its frontend,
+Ollama for local model execution,
+and Qwen as its language model.
+
+Zenith is being designed as an AI workspace
+with persistent conversations and document
+understanding.

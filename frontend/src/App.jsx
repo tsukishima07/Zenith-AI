@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -10,12 +14,16 @@ import {
   createConversation,
   getConversations,
   getConversationMessages,
+  getConversationDocuments,
   sendMessage,
   streamMessage,
   uploadFile,
   googleLogin,
   getCurrentUser,
   logout,
+  renameConversation,
+  deleteConversation,
+  deleteDocument,
 } from "./api";
 
 function MarkdownMessage({ content }) {
@@ -122,6 +130,8 @@ function App() {
 
   const [messages, setMessages] = useState([]);
 
+  const fileInputRef = useRef(null);
+
   const [conversations, setConversations] = useState([]);
 
   const [conversationId, setConversationId] = useState(null);
@@ -129,8 +139,14 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   const [initializing, setInitializing] = useState(true);
+
   const [uploadedFile, setUploadedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+
+
+  const [documents, setDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false); 
+  const [selectedDocument, setSelectedDocument] = useState(null);
 
   const [isListening, setIsListening] = useState(false);
   const [user, setUser] = useState(() => {
@@ -204,6 +220,9 @@ useEffect(() => {
     setMessages([]);
     setConversationId(null);
     setConversations([]);
+    setDocuments([]);
+    setSelectedDocument(null);
+    setUploadedFile(null);
 
   } catch (error) {
     console.error(
@@ -223,6 +242,8 @@ useEffect(() => {
         setConversations([]);
         setConversationId(null);
         setMessages([]);
+        setDocuments([]);
+        setSelectedDocument(null);
         return;
       }
 
@@ -242,6 +263,10 @@ useEffect(() => {
           );
 
         setMessages(savedMessages);
+
+        await loadConversationDocuments(
+          latestConversation.id
+        );
 
       } else {
         const newConversation =
@@ -338,6 +363,9 @@ useEffect(() => {
       );
 
       setMessages([]);
+      setDocuments([]);
+      setSelectedDocument(null);
+      setUploadedFile(null);
 
       setConversations((previous) => [
         newConversation,
@@ -357,66 +385,67 @@ useEffect(() => {
   // SEND MESSAGE
   // =========================================
 const handleFileUpload = async (event) => {
-  const file = event.target.files[0];
+  const files = Array.from(
+    event.target.files || []
+  );
 
-  if (!file) {
+  if (!files.length || !conversationId) {
     return;
   }
 
-  const allowedExtensions = [
-    ".pdf",
-    ".docx",
-    ".txt",
-  ];
-
-  const extension =
-    "." +
-    file.name
-      .split(".")
-      .pop()
-      .toLowerCase();
-
-  if (!allowedExtensions.includes(extension)) {
-    alert(
-      "Please upload a PDF, DOCX, or TXT file."
-    );
-
-    event.target.value = "";
-
-    return;
-  }
+  setUploading(true);
 
   try {
-    setUploading(true);
+    for (const file of files) {
+      console.log(
+        `Uploading ${file.name}...`
+      );
 
-    const data = await uploadFile(file,
-  conversationId);
+      const data = await uploadFile(
+        file,
+        conversationId
+      );
 
-    if (data.error) {
-      alert(data.error);
-      return;
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      console.log(
+        `${file.name} uploaded successfully`
+      );
     }
 
-    setUploadedFile({
-      name: data.filename,
-      type: data.type,
-      characters: data.characters,
-      text: data.text,
-    });
+    await loadConversationDocuments(
+      conversationId
+    );
 
-    console.log(
-      "Uploaded document:",
-      data
+    alert(
+      `${files.length} document${
+        files.length === 1 ? "" : "s"
+      } uploaded successfully.`
     );
 
   } catch (error) {
     console.error(
-      "File upload failed:",
+      "Document upload failed:",
       error
     );
 
+    console.error(
+      "Response:",
+      error.response?.data
+    );
+
+    console.error(
+      "Status:",
+      error.response?.status
+    );
+
     alert(
-      "Failed to upload the file."
+      error.response?.data?.error ||
+      error.response?.data?.detail ||
+      error.message ||
+      "One or more documents failed to upload."
     );
 
   } finally {
@@ -432,8 +461,12 @@ const handleVoiceInput = () => {
 
   if (!SpeechRecognition) {
     alert(
-      "Voice input is not supported by this browser."
+      "Voice input is not supported by this browser. Please use Google Chrome."
     );
+    return;
+  }
+
+  if (isListening) {
     return;
   }
 
@@ -442,8 +475,10 @@ const handleVoiceInput = () => {
   recognition.lang = "en-US";
   recognition.interimResults = false;
   recognition.continuous = false;
+  recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
+    console.log("Zenith voice input started");
     setIsListening(true);
   };
 
@@ -462,19 +497,46 @@ const handleVoiceInput = () => {
 
   recognition.onerror = (event) => {
     console.error(
-      "Speech recognition error:",
+      "Zenith voice recognition error:",
       event.error
     );
 
     setIsListening(false);
+
+    if (event.error === "not-allowed") {
+      alert(
+        "Microphone permission was denied. Please allow microphone access for Zenith in Chrome."
+      );
+    } else if (event.error === "no-speech") {
+      alert("I didn't hear anything. Please try again.");
+    } else if (event.error === "audio-capture") {
+      alert(
+        "No microphone was detected. Please check your microphone."
+      );
+    } else {
+      alert(
+        `Voice input failed: ${event.error}`
+      );
+    }
   };
 
   recognition.onend = () => {
+    console.log("Zenith voice input ended");
     setIsListening(false);
   };
 
-  recognition.start();
+  try {
+    recognition.start();
+  } catch (error) {
+    console.error(
+      "Failed to start voice recognition:",
+      error
+    );
+
+    setIsListening(false);
+  }
 };
+
 const handleSend = async () => {
   if (
     !message.trim() ||
@@ -528,10 +590,10 @@ const handleSend = async () => {
     let streamedResponse = "";
 
     await streamMessage(
-      conversationId,
-      userMessage,
-      messages,
-      uploadedFile?.text || "",
+  conversationId,
+  userMessage,
+  messages,
+  "",
       (chunk) => {
         streamedResponse += chunk;
 
@@ -622,6 +684,11 @@ const handleSend = async () => {
 
         setMessages(savedMessages);
 
+        await loadConversationDocuments(id);
+
+        setSelectedDocument(null);
+        setUploadedFile(null);
+
       } catch (error) {
         console.error(
           "Failed to load conversation:",
@@ -634,39 +701,225 @@ const handleSend = async () => {
         setLoading(false);
       }
     };
+  const loadConversationDocuments = async (id) => {
+  if (!id) {
+    setDocuments([]);
+    return;
+  }
 
+  try {
+    setDocumentsLoading(true);
+
+    const data =
+      await getConversationDocuments(id);
+
+    setDocuments(
+      Array.isArray(data) ? data : []
+    );
+  } catch (error) {
+    console.error(
+      "Failed to load documents:",
+      error
+    );
+
+    setDocuments([]);
+  } finally {
+    setDocumentsLoading(false);
+  }
+};
+  const handleRenameConversation = async (
+  event,
+  conversation
+) => {
+  event.stopPropagation();
+
+  const newTitle = window.prompt(
+    "Rename conversation:",
+    conversation.title
+  );
+
+  if (
+    newTitle === null ||
+    !newTitle.trim() ||
+    newTitle.trim() === conversation.title
+  ) {
+    return;
+  }
+
+  try {
+    const updated = await renameConversation(
+      conversation.id,
+      newTitle.trim()
+    );
+
+    setConversations((previous) =>
+      previous.map((item) =>
+        item.id === conversation.id
+          ? {
+              ...item,
+              title: updated.title,
+            }
+          : item
+      )
+    );
+  } catch (error) {
+    console.error(
+      "Failed to rename conversation:",
+      error
+    );
+
+    alert("Failed to rename conversation.");
+  }
+};
+const handleDeleteDocument = async (
+  event,
+  documentId
+) => {
+  event.stopPropagation();
+
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this document?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await deleteDocument(documentId);
+
+    setDocuments((previous) =>
+      previous.filter(
+        (document) =>
+          document.id !== documentId
+      )
+    );
+
+    if (
+      selectedDocument &&
+      selectedDocument.id === documentId
+    ) {
+      setSelectedDocument(null);
+    }
+
+  } catch (error) {
+    console.error(
+      "Failed to delete document:",
+      error
+    );
+
+    alert("Failed to delete document.");
+  }
+};
+const handleDeleteConversation = async (
+  event,
+  id
+) => {
+  event.stopPropagation();
+
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this conversation?"
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    await deleteConversation(id);
+
+    setConversations((previous) =>
+      previous.filter(
+        (conversation) =>
+          conversation.id !== id
+      )
+    );
+
+    if (conversationId === id) {
+      const remaining =
+        conversations.filter(
+          (conversation) =>
+            conversation.id !== id
+        );
+
+      if (remaining.length > 0) {
+        const nextConversation =
+          remaining[0];
+
+        setConversationId(
+          nextConversation.id
+        );
+
+        const savedMessages =
+          await getConversationMessages(
+            nextConversation.id
+          );
+
+        setMessages(savedMessages);
+
+        await loadConversationDocuments(
+          nextConversation.id
+        );
+
+        setSelectedDocument(null);
+        setUploadedFile(null);
+
+      } else {
+        const newConversation =
+          await createConversation();
+
+        setConversationId(
+          newConversation.id
+        );
+
+        setConversations([
+          newConversation,
+        ]);
+
+        setMessages([]);
+      }
+    }
+  } catch (error) {
+    console.error(
+      "Failed to delete conversation:",
+      error
+    );
+
+    alert("Failed to delete conversation.");
+  }
+};
 
   // =========================================
   // INITIALIZING SCREEN
   // =========================================
 
   if (initializing) {
-    return (
-      <main className="zenith">
+  return (
+    <main className="zenith">
 
-        <div className="initializing">
+      <div className="initializing">
 
-          <div className="zenith-core">
+        <div className="zenith-core">
 
-            <div className="core-ring ring-one"></div>
+          <div className="core-ring ring-one"></div>
 
-            <div className="core-ring ring-two"></div>
+          <div className="core-ring ring-two"></div>
 
-            <div className="core-center">
-              ✦
-            </div>
-
+          <div className="core-center">
+            ✦
           </div>
-
-          <p>
-            INITIALIZING ZENITH
-          </p>
 
         </div>
 
-      </main>
-    );
-  }
+        <p>
+          INITIALIZING ZENITH
+        </p>
+
+      </div>
+
+    </main>
+  );
+}
 
 
   // =========================================
@@ -705,30 +958,6 @@ const handleSend = async () => {
         </div>
 
       </header>
-{user && (
-  <div className="user-profile">
-    <div className="user-avatar">
-      {user.username?.charAt(0).toUpperCase()}
-    </div>
-
-    <div className="user-info">
-      <strong>
-        {user.username}
-      </strong>
-
-      <span>
-        {user.email}
-      </span>
-    </div>
-
-    <button
-      onClick={handleLogout}
-      className="logout-button"
-    >
-      Logout
-    </button>
-  </div>
-)}
 
       {/* =====================================
           MAIN LAYOUT
@@ -835,7 +1064,77 @@ const handleSend = async () => {
     )}
   </>
 )}
+<div className="sidebar-section document-library">
 
+  <p className="sidebar-title">
+    DOCUMENTS
+  </p>
+
+  {documentsLoading ? (
+    <div className="documents-empty">
+      Loading documents...
+    </div>
+  ) : documents.length === 0 ? (
+    <div className="documents-empty">
+      No documents yet
+    </div>
+  ) : (
+    <div className="document-list">
+
+      {documents.map((document) => (
+  <div
+    key={document.id}
+    className="document-item"
+  >
+
+    <button
+      type="button"
+      className="document-open-button"
+      onClick={() =>
+        setSelectedDocument(document)
+      }
+    >
+
+      <div className="document-icon">
+        📄
+      </div>
+
+      <div className="document-info">
+
+        <strong title={document.filename}>
+          {document.filename}
+        </strong>
+
+        <span>
+          {document.characters?.toLocaleString() || 0}
+          {" "}characters
+        </span>
+
+      </div>
+
+    </button>
+
+    <button
+      type="button"
+      className="document-delete-button"
+      onClick={(event) =>
+        handleDeleteDocument(
+          event,
+          document.id
+        )
+      }
+      title="Delete document"
+    >
+      ×
+    </button>
+
+  </div>
+))}
+
+    </div>
+  )}
+
+</div>
           <div className="sidebar-section">
 
             <p className="sidebar-title">
@@ -845,42 +1144,77 @@ const handleSend = async () => {
 
             <div className="conversation-list">
 
-              {conversations.map(
-                (conversation) => (
+  {conversations.map(
+    (conversation) => (
 
-                  <button
-                    key={conversation.id}
-                    className={
-                      `conversation-item ${
-                        conversation.id ===
-                        conversationId
-                          ? "active"
-                          : ""
-                      }`
-                    }
-                    onClick={() =>
-                      handleSelectConversation(
-                        conversation.id
-                      )
-                    }
-                  >
+      <div
+        key={conversation.id}
+        className={
+          `conversation-item-wrapper ${
+            conversation.id === conversationId
+              ? "active"
+              : ""
+          }`
+        }
+      >
 
-                    <span className="conversation-icon">
-                      ◇
-                    </span>
+        <button
+          className="conversation-item"
+          onClick={() =>
+            handleSelectConversation(
+              conversation.id
+            )
+          }
+        >
 
-                    <span className="conversation-title">
+          <span className="conversation-icon">
+            ◇
+          </span>
 
-                      {conversation.title}
+          <span className="conversation-title">
+            {conversation.title}
+          </span>
 
-                    </span>
+        </button>
 
-                  </button>
+        <div className="conversation-actions">
 
-                )
-              )}
+          <button
+            type="button"
+            className="conversation-action rename-action"
+            onClick={(event) =>
+              handleRenameConversation(
+                event,
+                conversation
+              )
+            }
+            title="Rename conversation"
+          >
+            ✎
+          </button>
 
-            </div>
+          <button
+            type="button"
+            className="conversation-action delete-action"
+            onClick={(event) =>
+              handleDeleteConversation(
+                event,
+                conversation.id
+              )
+            }
+            title="Delete conversation"
+          >
+            ×
+          </button>
+
+        </div>
+
+      </div>
+
+    )
+  )}
+
+</div>
 
           </div>
 
@@ -1182,29 +1516,19 @@ const handleSend = async () => {
   </div>
 )}
 
-{uploadedFile && !uploading && (
-  <div className="uploaded-file">
-    <div className="uploaded-file-icon">
-      📄
-    </div>
+{documents.length > 0 && !uploading && (
+  <div className="document-context-status">
 
-    <div className="uploaded-file-info">
-      <strong>
-        {uploadedFile.name}
-      </strong>
+    <span>
+      📚
+    </span>
 
-      <span>
-        {uploadedFile.characters.toLocaleString()} characters
-      </span>
-    </div>
+    <span>
+      {documents.length} document
+      {documents.length === 1 ? "" : "s"}
+      available to Zenith
+    </span>
 
-    <button
-      className="remove-file-button"
-      onClick={() => setUploadedFile(null)}
-      title="Remove file"
-    >
-      ×
-    </button>
   </div>
 )}
 
@@ -1231,12 +1555,13 @@ const handleSend = async () => {
   📎
 
   <input
-    type="file"
-    accept=".pdf,.docx,.txt"
-    onChange={handleFileUpload}
-    disabled={uploading || loading}
-    hidden
-  />
+  ref={fileInputRef}
+  type="file"
+  accept=".pdf,.docx,.txt"
+  multiple
+  onChange={handleFileUpload}
+  hidden
+/>
 </label>
 
               <input
@@ -1289,7 +1614,66 @@ const handleSend = async () => {
         </section>
 
       </div>
+{selectedDocument && (
+  <div
+    className="document-preview-overlay"
+    onClick={() =>
+      setSelectedDocument(null)
+    }
+  >
+    <div
+      className="document-preview"
+      onClick={(event) =>
+        event.stopPropagation()
+      }
+    >
 
+      <div className="document-preview-header">
+
+        <div className="document-preview-title">
+
+          <div className="document-preview-icon">
+            📄
+          </div>
+
+          <div>
+            <strong>
+              {selectedDocument.filename}
+            </strong>
+
+            <span>
+              {selectedDocument.file_type?.toUpperCase()}
+              {" · "}
+              {selectedDocument.characters?.toLocaleString() || 0}
+              {" characters"}
+            </span>
+          </div>
+
+        </div>
+
+        <button
+          type="button"
+          className="document-preview-close"
+          onClick={() =>
+            setSelectedDocument(null)
+          }
+          aria-label="Close document"
+        >
+          ×
+        </button>
+
+      </div>
+
+      <div className="document-preview-content">
+        <pre>
+          {selectedDocument.text ||
+            "No extracted text available."}
+        </pre>
+      </div>
+
+    </div>
+  </div>
+)}
     </main>
   );
 }
